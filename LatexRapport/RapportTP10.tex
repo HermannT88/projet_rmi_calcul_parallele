@@ -173,6 +173,41 @@ public class Appel {
 
 \textbf{Observer le temps de d'exécution en fonction de la taille de l'image calculée. Vous pouvez faire une courbe (temps de calcul et tailles d'image).}
 
+
+Itération 1 Largeur = 512 Hauteur = 512
+Temps de calcul :3182 ms
+Itération 2 Largeur = 1024 Hauteur = 1024
+Temps de calcul :7372 ms
+Itération 3 Largeur = 1536 Hauteur = 1536
+Temps de calcul :13642 ms
+Itération 4 Largeur = 2048 Hauteur = 2048
+Temps de calcul :23977 ms
+Itération 5 Largeur = 2560 Hauteur = 2560
+Temps de calcul :32773 ms
+Itération 6 Largeur = 3072 Hauteur = 3072
+Temps de calcul :48813 ms
+Itération 7 Largeur = 3584 Hauteur = 3584
+Temps de calcul :64370 ms
+Itération 8 Largeur = 4096Hauteur = 4096
+Temps de calcul :84049 ms
+Itération 9 Largeur = 4608 Hauteur = 4608
+Temps de calcul :107256 ms
+Itération 10 Largeur = 5120 Hauteur = 5120
+Temps de calcul :128906 ms
+
+
+\vspace{0.5cm}
+\begin{figure}[h]
+  \noindent
+  \begin{center}
+  \includegraphics[width=\textwidth]{images/courbe.png}
+  \end{center}
+  \caption{\underline{Temps d'éxecution en fonction des pixels }}
+\end{figure}
+\vspace{0.5cm}
+\newpage
+
+
 \newpage
 
 \textbf{En ne modifiant que le fichier LancerRaytracer.java, reproduire l'image suivante :
@@ -214,9 +249,9 @@ Le processus fixe est le service qui va transmettre le calcul aux différents no
 
 \textbf{Les types des données échangées entre les processus}
 
-Le client envoie un fichier .txt et les coordonnées relatives à la création de l'image (deux pour le point intial et  deux pour la longueur et la largeur des pixels). Il reçoit un objet "Image" une fois celle-ci construite.
+A REFAIRE 
 
-Le service central reçoit un fichier .txt. il envoie des calculs qui permettent de définir le pixel aux différents noeuds.
+Le client envoie un fichier .txt et les coordonnées relatives à la création de l'image (deux pour le point intial et  deux pour la longueur et la largeur des pixels). Il reçoit un objet "Image" une fois celle-ci construite.
 
 Une fois ces calculs réalisés, les noeuds retourne le résultat et le service central va l'interpréter.
 
