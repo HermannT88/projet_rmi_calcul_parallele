@@ -1,0 +1,172 @@
+\documentclass[a4paper,11pt]{article} % Type de papier et taille police
+
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{graphicx}
+\usepackage{lmodern}
+\usepackage[utf8]{inputenc}
+\usepackage{parskip}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning}
+
+\usepackage{listings} %pour afficher du code source
+\usepackage{xcolor}
+\usepackage{textcomp} % Rend les apostrophes droites correctement affichables
+\usepackage{upquote}  % Oblige listings à utiliser des apostrophes droites
+
+% Configuration du style
+\lstset{
+    language=Java,
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{black!5},
+    keywordstyle=\color{blue}\bfseries,
+    stringstyle=\color{purple},
+    commentstyle=\color{green!60!black}\itshape,
+    numbers=none,
+    rulecolor=\color{black!30},
+    frame=single,
+    breaklines=true,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    showspaces=false,
+    upquote=true,
+    extendedchars=true,
+    morekeywords={String, System, Thread, Runnable, Exception, RuntimeException, Object},
+    literate=
+    {é}{{\'e}}1
+    {è}{{\`e}}1
+    {ê}{{\^e}}1
+    {à}{{\`a}}1
+    {â}{{\^a}}1
+    {ç}{{\c{c}}}1
+    {ù}{{\`u}}1
+    {î}{{\^i}}1
+    {ô}{{\^o}}1
+    {'}{\textquotesingle}1
+}
+
+
+%Info document
+\title{Rapport Projet - Programmation répartie}
+\author{Alexis CERDA DE ALMEIDA VILACA\\ Logan SAGET \\Taïno HERMANN \\ Emelyne FOUSSE }
+\date{\today}
+
+\begin{document}
+
+\maketitle % Affiche le titre défini plus haut
+\tableofcontents % Génère la table des matières automatiquement
+\newpage   % Saut de page
+
+\section{Squelette RMI}
+
+\textbf{Annuaire}
+
+\begin{lstlisting}
+Commande rmiregistry 1099
+   
+import java.rmi.registry.Registry;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.RemoteException;
+
+public class Annuaire {
+  public static void main(String[] args) {
+    String adresse = args[0];
+    Registry reg;
+    try {
+      reg = LocateRegistry.getRegistry(adresse);
+      for (String elt : reg.list()) {
+        System.out.println(elt);
+      }
+    } catch (RemoteException e) { // lancer par getRegistry
+      System.out.println(e.getMessage());
+    }
+  }
+}
+\end{lstlisting}
+
+\textbf{Service}
+
+\begin{lstlisting}
+import java.rmi.RemoteException;
+
+public class Service implements ServiceInterface {
+  public int Methode() throws RemoteException {
+    // le throws est obligatoire pour les methodes d une interface RMI
+    String host = ""; //ligne qui permet d'afficher l'IP du client !
+    try {
+      host = RemoteServer.getClientHost();
+      System.out.println(host);
+    } catch (ServerNotActiveException e) {} // jusqu'ici
+    return 0;
+  }
+}
+\end{lstlisting}
+\newpage
+LancerService
+\begin{lstlisting}
+import java.rmi.server.UnicastRemoteObject;
+import java.rmi.RemoteException;
+import java.rmi.registry.Registry;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.server.ServerNotActiveException;
+
+public class LancerService {
+  public static void main(String args[]) throws RemoteException, ServerNotActiveException {
+    try {
+      Service nom = new Service(); // creation d un objet (new)
+      ServiceInterface rd = (ServiceInterface) UnicastRemoteObject.exportObject(nom, 0); // 0 pour que OS donne le port automatiquement
+      Registry reg = LocateRegistry.getRegistry(1099); // 1099 port par defaut des annuaire (modifiable)
+      reg.rebind("LeNom", rd); // donner un nom dans l annuaire pour le service
+    } catch (RemoteException e) {
+      System.out.println(e.getMessage());
+    }
+  }
+}
+\end{lstlisting}
+
+ServiceInterface
+\begin{lstlisting}
+import java.rmi.Remote;
+import java.rmi.RemoteException;
+
+public interface ServiceInterface extends Remote {
+  public int Methode() throws RemoteException; // toutes les exceptions ...
+}
+\end{lstlisting}
+
+Elle dois être commune entre le Service et le Client
+
+\newpage
+\textbf{Client}
+
+Appel
+\begin{lstlisting}
+import java.rmi.registry.Registry;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.RemoteException;
+import java.rmi.NotBoundException;
+
+public class Appel {
+  public static void main(String[] args) {
+    String adresse = args[0];
+    Registry reg;
+    try {
+      reg = LocateRegistry.getRegistry(adresse);
+      ServiceInterface Objet = (ServiceInterface) reg.lookup("LeNom");
+      int num = Objet.Methode();
+    } catch (NotBoundException e) {
+      System.out.println("Reference non trouvee dans l'annuaire");
+    } catch (RemoteException e2) {
+      System.out.println("Reference(s) non cree(s)");
+    }
+  }
+}
+\end{lstlisting}
+
+\section{Questions du projet}
+
+\subsection{Que fait le client lors d'un appel à un service ?}
+
+
+\end{document}
