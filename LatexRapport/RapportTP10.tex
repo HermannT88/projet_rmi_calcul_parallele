@@ -173,11 +173,34 @@ public class Appel {
 
 \textbf{Observer le temps de d'exécution en fonction de la taille de l'image calculée. Vous pouvez faire une courbe (temps de calcul et tailles d'image).}
 
+\newpage
 
 \textbf{En ne modifiant que le fichier LancerRaytracer.java, reproduire l'image suivante :
 }
 
 
+\begin{lstlisting}
+
+int x0 = 0, y0 = 0;
+int l = largeur, h = hauteur;
+
+// Chronométrage du temps de calcul
+Instant debut = Instant.now();
+System.out.println("Calcul de l'image :\n - Coordonnées : "+x0+","+y0
++"\n - Taille "+ largeur + "x" + hauteur);
+Image image = scene.compute(x0, y0, l/2, h/2);
+Image image1 = scene.compute(l/2, h/2, l/2, h/2);
+Instant fin = Instant.now();
+
+long duree = Duration.between(debut, fin).toMillis();
+
+System.out.println("Image calculée en :"+duree+" ms");
+
+// Affichage de l'image calculée	
+disp.setImage(image, x0, y0);
+disp.setImage(image1, l/2, h/2);
+
+\end{lstlisting}
 
 
 Faire un petit schéma de cette architecture en identifiant les choses suivantes :
@@ -190,6 +213,13 @@ Le processus fixe est le service qui va transmettre le calcul aux différents no
 
 
 \textbf{Les types des données échangées entre les processus}
+
+Le client envoie un fichier .txt et les coordonnées relatives à la création de l'image (deux pour le point intial et  deux pour la longueur et la largeur des pixels). Il reçoit un objet "Image" une fois celle-ci construite.
+
+Le service central reçoit un fichier .txt. il envoie des calculs qui permettent de définir le pixel aux différents noeuds.
+
+Une fois ces calculs réalisés, les noeuds retourne le résultat et le service central va l'interpréter.
+
 
 
 \textbf{Si on veux que les calculs se fassent en parallèle que faut-il faire ?}
