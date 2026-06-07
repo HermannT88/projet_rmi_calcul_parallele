@@ -10,4 +10,6 @@ public interface DispatcherInterface extends Remote {
 
     void renvoyerResultat(TaskResult resultat) throws RemoteException;
 
+    Image getImageEnCours() throws RemoteException;
+
 }
