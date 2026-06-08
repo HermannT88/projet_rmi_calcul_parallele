@@ -1,4 +1,4 @@
-\documentclass[a4paper,11pt]{article} % Type de papier et taille police
+\documentclass[a4paper,11pt]{article}
 
 \usepackage[T1]{fontenc}
 \usepackage[french]{babel}
@@ -8,11 +8,13 @@
 \usepackage{parskip}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, positioning}
+\usepackage{float}
+\usepackage[margin=2.5cm]{geometry}
 
-\usepackage{listings} %pour afficher du code source
+\usepackage{listings}
 \usepackage{xcolor}
-\usepackage{textcomp} % Rend les apostrophes droites correctement affichables
-\usepackage{upquote}  % Oblige listings à utiliser des apostrophes droites
+\usepackage{textcomp}
+\usepackage{upquote}
 
 % Configuration du style
 \lstset{
@@ -46,192 +48,74 @@
     {'}{\textquotesingle}1
 }
 
-
 %Info document
 \title{Rapport Projet - Programmation répartie}
-\author{Alexis CERDA DE ALMEIDA VILACA\\ Logan SAGET \\Taïno HERMANN \\ Emelyne FOUSSE }
+\author{Alexis CERDA DE ALMEIDA VILACA\\ Logan SAGET \\Taïno HERMANN \\ Emelyne FOUSSE}
 \date{\today}
 
 \begin{document}
 
-\maketitle % Affiche le titre défini plus haut
-\tableofcontents % Génère la table des matières automatiquement
-\newpage   % Saut de page
-
-\section{Squelette RMI}
-
-\textbf{Annuaire}
-
-\begin{lstlisting}
-Commande rmiregistry 1099
-   
-import java.rmi.registry.Registry;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.RemoteException;
-
-public class Annuaire {
-  public static void main(String[] args) {
-    String adresse = args[0];
-    Registry reg;
-    try {
-      reg = LocateRegistry.getRegistry(adresse);
-      for (String elt : reg.list()) {
-        System.out.println(elt);
-      }
-    } catch (RemoteException e) { // lancer par getRegistry
-      System.out.println(e.getMessage());
-    }
-  }
-}
-\end{lstlisting}
-
-\textbf{Service}
-
-\begin{lstlisting}
-import java.rmi.RemoteException;
-
-public class Service implements ServiceInterface {
-  public int Methode() throws RemoteException {
-    // le throws est obligatoire pour les methodes d une interface RMI
-    String host = ""; //ligne qui permet d'afficher l'IP du client !
-    try {
-      host = RemoteServer.getClientHost();
-      System.out.println(host);
-    } catch (ServerNotActiveException e) {} // jusqu'ici
-    return 0;
-  }
-}
-\end{lstlisting}
-\newpage
-LancerService
-\begin{lstlisting}
-import java.rmi.server.UnicastRemoteObject;
-import java.rmi.RemoteException;
-import java.rmi.registry.Registry;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.server.ServerNotActiveException;
-
-public class LancerService {
-  public static void main(String args[]) throws RemoteException, ServerNotActiveException {
-    try {
-      Service nom = new Service(); // creation d un objet (new)
-      ServiceInterface rd = (ServiceInterface) UnicastRemoteObject.exportObject(nom, 0); // 0 pour que OS donne le port automatiquement
-      Registry reg = LocateRegistry.getRegistry(1099); // 1099 port par defaut des annuaire (modifiable)
-      reg.rebind("LeNom", rd); // donner un nom dans l annuaire pour le service
-    } catch (RemoteException e) {
-      System.out.println(e.getMessage());
-    }
-  }
-}
-\end{lstlisting}
-
-ServiceInterface
-\begin{lstlisting}
-import java.rmi.Remote;
-import java.rmi.RemoteException;
-
-public interface ServiceInterface extends Remote {
-  public int Methode() throws RemoteException; // toutes les exceptions ...
-}
-\end{lstlisting}
-
-Elle dois être commune entre le Service et le Client
-
-\newpage
-\textbf{Client}
-
-Appel
-\begin{lstlisting}
-import java.rmi.registry.Registry;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.RemoteException;
-import java.rmi.NotBoundException;
-
-public class Appel {
-  public static void main(String[] args) {
-    String adresse = args[0];
-    Registry reg;
-    try {
-      reg = LocateRegistry.getRegistry(adresse);
-      ServiceInterface Objet = (ServiceInterface) reg.lookup("LeNom");
-      int num = Objet.Methode();
-    } catch (NotBoundException e) {
-      System.out.println("Reference non trouvee dans l'annuaire");
-    } catch (RemoteException e2) {
-      System.out.println("Reference(s) non cree(s)");
-    }
-  }
-}
-\end{lstlisting}
-
-\section{Questions du projet}
-
-\subsection{Shématiser le problème :}
-
-En utilisant votre meilleur outil, votre imagination, décrivez et illustrez comment cela pourrait être réalisé, sans rentrer dans les détails JAVA, que vous n'allez pas tarder à mettre en œuvre. 
-
-
-\vspace{0.5cm}
-\begin{figure}[h]
-  \noindent
-  \begin{center}
-  \includegraphics[width=\textwidth]{images/shemafinal.png}
-  \end{center}
-  \caption{\underline{Schéma final de l'architecture RMI}}
-\end{figure}
-\vspace{0.5cm}
+\maketitle
+\tableofcontents
 \newpage
 
-\subsection{Que fait le client lors d'un appel à un service ?}
+% ===================================================
+\section{Introduction}
+% ===================================================
 
-\textbf{Tester le programme en modifiant ses paramètres (sur la ligne de commande).
-}
+% TODO
 
-\textbf{Observer le temps de d'exécution en fonction de la taille de l'image calculée. Vous pouvez faire une courbe (temps de calcul et tailles d'image).}
+\newpage
 
+% ===================================================
+\section{Le raytracer local}
+% ===================================================
 
-Itération 1 Largeur = 512 Hauteur = 512
-Temps de calcul :3182 ms
-Itération 2 Largeur = 1024 Hauteur = 1024
-Temps de calcul :7372 ms
-Itération 3 Largeur = 1536 Hauteur = 1536
-Temps de calcul :13642 ms
-Itération 4 Largeur = 2048 Hauteur = 2048
-Temps de calcul :23977 ms
-Itération 5 Largeur = 2560 Hauteur = 2560
-Temps de calcul :32773 ms
-Itération 6 Largeur = 3072 Hauteur = 3072
-Temps de calcul :48813 ms
-Itération 7 Largeur = 3584 Hauteur = 3584
-Temps de calcul :64370 ms
-Itération 8 Largeur = 4096Hauteur = 4096
-Temps de calcul :84049 ms
-Itération 9 Largeur = 4608 Hauteur = 4608
-Temps de calcul :107256 ms
-Itération 10 Largeur = 5120 Hauteur = 5120
-Temps de calcul :128906 ms
+\subsection{Mesures de temps d'exécution}
 
+\begin{table}[H]
+\centering
+\begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{Itération} & \textbf{Largeur (px)} & \textbf{Hauteur (px)} & \textbf{Temps de calcul (ms)} \\
+\hline
+1 & 512 & 512 & 3182 \\
+\hline
+2 & 1024 & 1024 & 7372 \\
+\hline
+3 & 1536 & 1536 & 13642 \\
+\hline
+4 & 2048 & 2048 & 23977 \\
+\hline
+5 & 2560 & 2560 & 32773 \\
+\hline
+6 & 3072 & 3072 & 48813 \\
+\hline
+7 & 3584 & 3584 & 64370 \\
+\hline
+8 & 4096 & 4096 & 84049 \\
+\hline
+9 & 4608 & 4608 & 107256 \\
+\hline
+10 & 5120 & 5120 & 128906 \\
+\hline
+\end{tabular}
+\caption{Évolution du temps de calcul en fonction des dimensions}
+\end{table}
 
 \vspace{0.5cm}
-\begin{figure}[h]
+\begin{figure}[H]
   \noindent
   \begin{center}
   \includegraphics[width=\textwidth]{images/courbe.png}
   \end{center}
-  \caption{\underline{Temps d'éxecution en fonction des pixels }}
+  \caption{\underline{Temps d'éxecution en fonction des pixels}}
 \end{figure}
 \vspace{0.5cm}
-\newpage
 
-
-\newpage
-
-\textbf{En ne modifiant que le fichier LancerRaytracer.java, reproduire l'image suivante :
-}
-
+\subsection{Reproduction de l'image}
 
 \begin{lstlisting}
-
 int x0 = 0, y0 = 0;
 int l = largeur, h = hauteur;
 
@@ -247,31 +131,71 @@ long duree = Duration.between(debut, fin).toMillis();
 
 System.out.println("Image calculée en :"+duree+" ms");
 
-// Affichage de l'image calculée	
+// Affichage de l'image calculée
 disp.setImage(image, x0, y0);
 disp.setImage(image1, l/2, h/2);
-
 \end{lstlisting}
 
+\newpage
 
-Faire un petit schéma de cette architecture en identifiant les choses suivantes :
+% ===================================================
+\section{Architecture de l'application répartie}
+% ===================================================
 
-\textbf{Le/les processus fixes (ceux qui écoutent sur un port choisi) et les processus mobiles ? (ceux qui rentrent et sortent a leur guise)?}
+\subsection{Schéma de l'architecture}
 
-Les processus mobiles sont représentés par les différents nœuds de calculs qui peuvent s’enregistrer et se déconnecter. On peut également considérer le client qui est à l'origine de la demande de calcul comme un processus mobile.
+% TODO
 
-Le processus fixe est le service qui va transmettre le calcul aux différents noeuds de calculs. Le service et enregistré sur un port 
+\subsection{Processus fixes et processus mobiles}
 
+Les processus mobiles sont représentés par les différents nœuds de calculs qui peuvent s'enregistrer et se déconnecter. On peut également considérer le client qui est à l'origine de la demande de calcul comme un processus mobile.
 
-\textbf{Les types des données échangées entre les processus}
+Le processus fixe est le service qui va transmettre le calcul aux différents noeuds de calculs. Le service est enregistré sur un port.
 
-Le client appel les noeuds inscrits dans le service central. Il envoie le fichier ".txt" et les coordonnées relatives à la création de l'image (deux pour le point intial et  deux pour la longueur et la largeur des pixels). Il reçoit un objet "Image" une fois celle-ci construite.
+\subsection{Données échangées entre les processus}
 
-Une fois ces calculs réalisés, les noeuds retourne le résultat au client.
+Le client envoie un fichier .txt et les coordonnées relatives à la création de l'image (deux pour le point initial et deux pour la longueur et la largeur des pixels). Il reçoit un objet "Image" une fois celle-ci construite.
 
+Une fois ces calculs réalisés, les noeuds retournent le résultat et le service central va l'interpréter.
 
+\newpage
 
-\textbf{Si on veux que les calculs se fassent en parallèle que faut-il faire ?}
+% ===================================================
+\section{Fonctionnement des composants}
+% ===================================================
 
-Il faut séparer chaque envoie aux noeud dans des nouveaux Thread.
+\subsection{Le service central}
+
+% TODO
+
+\subsection{Les nœuds de calcul}
+
+% TODO
+
+\subsection{Le client / dispatcher}
+
+% TODO
+
+\newpage
+
+% ===================================================
+\section{Mise en œuvre du parallélisme}
+% ===================================================
+
+\subsection{Distribution des tâches en threads}
+
+Il faut séparer chaque envoi aux noeuds dans des nouveaux Thread.
+
+\subsection{Synchronisation et assemblage des résultats}
+
+% TODO
+
+\newpage
+
+% ===================================================
+\section{Conclusion}
+% ===================================================
+
+% TODO
+
 \end{document}
