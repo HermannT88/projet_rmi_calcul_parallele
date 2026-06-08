@@ -40,7 +40,7 @@ public class ComputeNodeImpl implements ComputeNode {
 
             // Connexion à l'annuaire RMI
             Registry registry = LocateRegistry.getRegistry("localhost", 1099);
-            ServiceCentral serviceCentral = (ServiceCentral) registry.lookup("ServiceCentral");
+            ServiceInterface serviceCentral = (ServiceInterface) registry.lookup("ServiceCentral");
 
             // Enregistrement du noeud dans la liste du service central
             serviceCentral.enregistrerNoeud(stub);
