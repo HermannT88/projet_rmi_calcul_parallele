@@ -61,9 +61,4 @@ public class ComputeNodeImpl implements ComputeNode {
             e.printStackTrace();
         }
     }
-
-    public static void main(String[] args) {
-        String nom = args.length > 0 ? args[0] : "Noeud-1";
-        demarrerNoeud(nom);
-    }
 }
