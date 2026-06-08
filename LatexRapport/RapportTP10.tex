@@ -73,6 +73,25 @@
 
 \subsection{Mesures de temps d'exécution}
 
+Pour réalisés des mesures sur le temps de calcul, nous avons fait une boucle qui exécute 10 fois le calcul de l'image avec à chaque itération \texttt{largeur = i * largeur de base} et \texttt{hauteur = i * hauteur de base}
+
+\begin{lstlisting}
+for (int i = 1; i<= 10; i++ ){
+  int l = largeur*i, h = hauteur*i;
+  
+  Instant debut = Instant.now();
+  System.out.println("Itération " + i + " Largeur = " + l + "Hauteur = "+ h);
+  Image image = scene.compute(x0, y0, l, h);
+  Instant fin = Instant.now();
+
+  long duree = Duration.between(debut, fin).toMillis();
+            
+  System.out.println("Temps de calcul :"+duree+" ms");
+}
+\end{lstlisting}
+
+Nous obtenons alors ces résultats :
+
 \begin{table}[H]
 \centering
 \begin{tabular}{|c|c|c|c|}
@@ -113,7 +132,32 @@
 \end{figure}
 \vspace{0.5cm}
 
+Nous constatons que le temps de calcul augmente proportionnelement au nombre de pixels de l'image.
+
 \subsection{Reproduction de l'image}
+
+Pour reproduire l'image, nous allons calculer individuellement les deux parties de l'image attendue.
+
+La première partie, le programme va calculer l'image en partant des coordonnées 0 ; 0 soit le coin supérieur droit. Puis il va calculer l'image jusqu'a son centre, donc à la moitier de la hauteur et la moitier de la largeur. Ce qui nous donne la ligne suivante :
+
+\begin{lstlisting}
+  Image image1 = scene.compute(x0, y0, l/2, h/2);
+\end{lstlisting}
+
+Pour la seconde, nous allons recréé une image qui cette fois va commencer au millieu et encore avancé en largeur et en hauteur de la moitié. Nous avons alors cette ligne :
+
+\begin{lstlisting}
+  Image image2 = scene.compute(l/2, h/2, l/2, h/2);
+\end{lstlisting}
+
+Enfin nous affichons les deux images calculée précédemment sur la même fenêtre, avec la première au coordonnées 0 ; 0 et la seconde au centre de l'image :
+
+\begin{lstlisting}
+  disp.setImage(image1, x0, y0);
+  disp.setImage(image2, l/2, h/2);
+\end{lstlisting}
+
+Pour le code complet, nous arrivons donc à ce résultat :
 
 \begin{lstlisting}
 int x0 = 0, y0 = 0;
@@ -123,8 +167,8 @@ int l = largeur, h = hauteur;
 Instant debut = Instant.now();
 System.out.println("Calcul de l'image :\n - Coordonnées : "+x0+","+y0
 +"\n - Taille "+ largeur + "x" + hauteur);
-Image image = scene.compute(x0, y0, l/2, h/2);
-Image image1 = scene.compute(l/2, h/2, l/2, h/2);
+Image image1 = scene.compute(x0, y0, l/2, h/2);
+Image image2 = scene.compute(l/2, h/2, l/2, h/2);
 Instant fin = Instant.now();
 
 long duree = Duration.between(debut, fin).toMillis();
@@ -132,8 +176,8 @@ long duree = Duration.between(debut, fin).toMillis();
 System.out.println("Image calculée en :"+duree+" ms");
 
 // Affichage de l'image calculée
-disp.setImage(image, x0, y0);
-disp.setImage(image1, l/2, h/2);
+disp.setImage(image1, x0, y0);
+disp.setImage(image2, l/2, h/2);
 \end{lstlisting}
 
 \newpage
