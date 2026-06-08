@@ -1,20 +1,18 @@
 package service;
+
 import java.rmi.Remote;
 import java.rmi.RemoteException;
-import java.util.ArrayList;
-
-import ClientRaytracer;
-import raytracer.Image;
-import noeud_calcul.ComputeNodeImpl;
+import java.util.List;
+import noeud_calcul.ComputeNode;
 
 public interface ServiceInterface extends Remote {
 
-    void enregistrerNoeud(ComputeNodeImpl noeud) throws RemoteException;
+    /** Enregistre un nœud de calcul auprès du service central. */
+    void enregistrerNoeud(ComputeNode noeud) throws RemoteException;
 
-    void supprimerNoeud(ComputeNodeImpl noeud) throws RemoteException;
+    /** Retire un nœud de calcul de la liste. */
+    void supprimerNoeud(ComputeNode noeud) throws RemoteException;
 
-    void enregistrerClient(ClientRaytracer client) throws RemoteException;
-
-    ArrayList<ComputeNodeImpl> getListeNoeuds();
-
+    /** Retourne la liste des nœuds disponibles pour que le client distribue le travail. */
+    List<ComputeNode> getListeNoeuds() throws RemoteException;
 }

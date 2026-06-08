@@ -1,3 +1,5 @@
+package noeud_calcul;
+
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
@@ -17,7 +19,8 @@ public class ComputeNodeImpl implements ComputeNode {
     }
 
     @Override
-    public Image calculerBloc(String fichier_description, int x, int y, int w, int h, int largeurTotale, int hauteurTotale) throws RemoteException {
+    public Image calculerBloc(String fichier_description, int x, int y, int w, int h, int largeurTotale,
+            int hauteurTotale) throws RemoteException {
         System.out.println(nom + " : Tâche reçue : bloc de " + w + "x" + h + " en (" + x + "," + y + ")");
         Instant debut = Instant.now();
 
@@ -28,7 +31,7 @@ public class ComputeNodeImpl implements ComputeNode {
         Instant fin = Instant.now();
         long duree = Duration.between(debut, fin).toMillis();
         System.out.println(nom + " : Tâche complétée en " + duree + " ms.");
-        
+
         // Retourne le résultat
         return bloc;
     }
@@ -45,8 +48,14 @@ public class ComputeNodeImpl implements ComputeNode {
 
             // Enregistrement du noeud dans la liste du service central
             serviceCentral.enregistrerNoeud(stub);
-            System.out.println(nomNoeud + " : Enregistréauprès du service central.");
+            System.out.println(nomNoeud + " : Enregistré auprès du service central.");
 
+            // Le thread reste actif pour continuer à répondre aux appels RMI
+            synchronized (node) {
+                node.wait();
+            }
+        } catch (InterruptedException e) {
+            System.out.println(nomNoeud + " : Arrêt du nœud.");
         } catch (Exception e) {
             System.err.println(nomNoeud + " : Erreur d'initialisation : " + e.toString());
             e.printStackTrace();

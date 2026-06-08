@@ -1,47 +1,90 @@
+package client;
+
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.RemoteException;
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.rmi.NotBoundException;
-import java.rmi.server.RemoteServer;
-import java.rmi.server.ServerNotActiveException;
 import java.time.Instant;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 import raytracer.Disp;
 import raytracer.Image;
+import service.ServiceInterface;
+import noeud_calcul.ComputeNode;
 
+/**
+ * Client du système de calcul parallèle distribué.
+ *
+ * Fonctionnement :
+ * 1. Se connecte au service central et récupère la liste des nœuds disponibles.
+ * 2. Découpe l'image en blocs (grille 10x10).
+ * 3. Distribue les blocs aux nœuds en parallèle (un Thread par nœud).
+ * 4. Chaque thread pioche des blocs dans la file de travail et appelle
+ * calculerBloc() sur le nœud qui lui est attribué.
+ * 5. Assemble les résultats et affiche l'image finale.
+ */
 public class ClientRaytracer {
 
-    private Image imageEnCours;
-
-    private Task[] toutesLesTaches;
-    private int prochainBloc;
+    // File de travail partagée entre les threads (accès synchronisé)
+    private final List<Task> fileTravail = new ArrayList<>();
+    // Image résultat finale
+    private Image imageFinale;
+    // Compteur de blocs encore à recevoir
     private int blocsRestants;
 
-    public synchronized Image distribuerCalcul(String nomFichier, int largeurTotale, int hauteurTotale)
-            throws RemoteException {
-        try {
-            System.out.println("Nouvelle demande du client : " + RemoteServer.getClientHost());
-        } catch (ServerNotActiveException e) {
-        }
+    /**
+     * Récupère le prochain bloc à traiter (thread-safe).
+     * Retourne null si tout le travail a été distribué.
+     */
+    private synchronized Task prendreProchainBloc() {
+        if (fileTravail.isEmpty())
+            return null;
+        return fileTravail.remove(0);
+    }
 
-        int nbColonnes = 10;
-        int nbLignes = 10;
-        int nbTotalTaches = nbColonnes * nbLignes;
-
-        this.imageEnCours = new Image(largeurTotale, hauteurTotale);
-        for (int x = 0; x < largeurTotale; x++) {
-            for (int y = 0; y < hauteurTotale; y++) {
-                this.imageEnCours.setPixel(x, y, Color.BLACK);
+    /**
+     * Reçoit le résultat d'un bloc calculé et l'intègre dans l'image finale
+     * (thread-safe).
+     */
+    private synchronized void recevoirResultat(Task t, Image bloc) {
+        for (int i = 0; i < t.w; i++) {
+            for (int j = 0; j < t.h; j++) {
+                imageFinale.setPixel(t.x + i, t.y + j, bloc.getPixel(i, j));
             }
         }
+        blocsRestants--;
+        if (blocsRestants == 0) {
+            notifyAll(); // Réveille le thread principal
+        }
+    }
 
-        this.toutesLesTaches = new Task[nbTotalTaches];
-        this.prochainBloc = 0;
-        this.blocsRestants = nbTotalTaches;
+    /**
+     * Lance le calcul distribué :
+     * - Récupère la liste des nœuds depuis le service central
+     * - Prépare la file de blocs à calculer
+     * - Lance un thread par nœud pour distribuer le travail
+     * - Attend que tous les blocs soient calculés
+     */
+    public Image distribuerCalcul(ServiceInterface service, Disp disp, String nomFichier, int largeurTotale,
+            int hauteurTotale)
+            throws RemoteException, InterruptedException {
 
+        // Récupération des nœuds disponibles
+        List<ComputeNode> noeuds = service.getListeNoeuds();
+        if (noeuds.isEmpty()) {
+            System.out.println("Aucun nœud disponible !");
+            return null;
+        }
+        System.out.println(noeuds.size() + " nœuds disponibles.");
+
+        // Préparation de l'image résultat
+        imageFinale = new Image(largeurTotale, hauteurTotale);
+
+        // Découpage en grille de blocs
+        int nbColonnes = 10;
+        int nbLignes = 10;
         int lBloc = largeurTotale / nbColonnes;
         int hBloc = hauteurTotale / nbLignes;
 
@@ -52,140 +95,102 @@ public class ClientRaytracer {
                 int y = lig * hBloc;
                 int w = (col == nbColonnes - 1) ? (largeurTotale - x) : lBloc;
                 int h = (lig == nbLignes - 1) ? (hauteurTotale - y) : hBloc;
-
-                Task t = new Task(id, nomFichier, x, y, w, h, largeurTotale, hauteurTotale);
-                toutesLesTaches[id] = t;
-                id++;
+                fileTravail.add(new Task(id++, nomFichier, x, y, w, h, largeurTotale, hauteurTotale));
             }
         }
 
-        System.out.println(nbTotalTaches + " tâches prêtes. En attente des noeuds...");
+        blocsRestants = fileTravail.size();
+        System.out.println(blocsRestants + " blocs à calculer.");
 
-        while (blocsRestants > 0) {
-            try {
-                wait(); // Attend un notify() de la méthode renvoyerResultat
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-
-        System.out.println("Calcul terminé !");
-        return imageEnCours;
-    }
-
-    @Override
-    public synchronized Task demanderTravail() throws RemoteException {
-        // S'il reste des blocs à attribuer
-        if (toutesLesTaches != null && prochainBloc < toutesLesTaches.length) {
-            Task t = toutesLesTaches[prochainBloc];
-            prochainBloc++;
-            return t;
-        }
-        return null;
-    }
-
-    @Override
-    public synchronized void renvoyerResultat(TaskResult resultat) throws RemoteException {
-        if (toutesLesTaches == null)
-            return;
-
-        Task t = null;
-        for (int i = 0; i < toutesLesTaches.length; i++) {
-            if (toutesLesTaches[i] != null && toutesLesTaches[i].id == resultat.taskId) {
-                t = toutesLesTaches[i];
-                // On met à null pour marquer la tâche comme terminée
-                toutesLesTaches[i] = null;
-                break;
-            }
-        }
-
-        if (t == null)
-            return; // Déjà traitée ou erreur
-
-        try {
-            System.out.println("Résultat de tâche " + t.id + " reçu depuis le noeud : " + RemoteServer.getClientHost());
-        } catch (ServerNotActiveException e) {
-        }
-
-        Image blocImage = resultat.imageBloc;
-        for (int i = 0; i < t.w; i++) {
-            for (int j = 0; j < t.h; j++) {
-                Color c = blocImage.getPixel(i, j);
-                imageEnCours.setPixel(t.x + i, t.y + j, c);
-            }
-        }
-
-        blocsRestants--;
-
-        if (blocsRestants == 0) {
-            notifyAll();
-        }
-    }
-
-    @Override
-    public synchronized Image getImageEnCours() throws RemoteException {
-        // Renvoie une copie ou l'image en l'état
-        return imageEnCours;
-    }
-
-    public static void main(String[] args) {
-        if (args.length < 3) {
-            System.out.println("Usage : java ClientRaytracer <fichier_scene> <largeur> <hauteur>");
-            return;
-        }
-
-        String fichier_description = args[0];
-        int largeur = Integer.parseInt(args[1]);
-        int hauteur = Integer.parseInt(args[2]);
-
-        try {
-            Disp disp = new Disp("Raytracer Distribué", largeur, hauteur);
-
-            Registry reg = LocateRegistry.getRegistry("localhost", 1099);
-            
-
-            ClientRaytracer dispatcher = new ClientRaytracer();
-
-            System.out.println("Demande : " + fichier_description + " (" + largeur + "x" + hauteur + ")");
-
-            Instant debut = Instant.now();
-
-            Thread afficheur = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    while (!Thread.currentThread().isInterrupted()) {
-                        try {
-                            Thread.sleep(200);
-                            Image img = dispatcher.getImageEnCours();
-                            if (img != null) {
-                                disp.setImage(img, 0, 0);
-                            }
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                        } catch (Exception e) {
+        // Lancement d'un thread de travail par nœud
+        List<Thread> threads = new ArrayList<>();
+        for (ComputeNode noeud : noeuds) {
+            Thread t = new Thread(() -> {
+                Task tache;
+                while ((tache = prendreProchainBloc()) != null) {
+                    try {
+                        System.out.println("Envoi bloc " + tache.id + " au noeud...");
+                        Image bloc = noeud.calculerBloc(
+                                tache.nomFichier,
+                                tache.x, tache.y, tache.w, tache.h,
+                                tache.largeurTotale, tache.hauteurTotale);
+                        // Affichage immédiat du bloc dès réception
+                        disp.setImage(bloc, tache.x, tache.y);
+                        recevoirResultat(tache, bloc);
+                        System.out.println("Bloc " + tache.id + " integre.");
+                    } catch (RemoteException e) {
+                        System.err.println("Erreur sur bloc " + tache.id + " : " + e.getMessage());
+                        // Remettre le bloc dans la file pour un autre nœud
+                        synchronized (this) {
+                            fileTravail.add(tache);
                         }
                     }
                 }
             });
-            afficheur.start();
+            threads.add(t);
+            t.start();
+        }
 
-            Image imageFinale = dispatcher.distribuerCalcul(fichier_description, largeur, hauteur);
+        // Attente de la fin de tous les calculs
+        synchronized (this) {
+            while (blocsRestants > 0) {
+                wait();
+            }
+        }
 
-            afficheur.interrupt();
+        // Attente propre de la fin des threads
+        for (Thread t : threads) {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+            }
+        }
+
+        System.out.println("Calcul distribué terminé !");
+        return imageFinale;
+    }
+
+    public static void main(String[] args) {
+        if (args.length < 3) {
+            System.out.println("Usage : java ClientRaytracer <fichier_scene> <largeur> <hauteur> [adresse_service]");
+            return;
+        }
+
+        String nomFichier = args[0];
+        int largeur = Integer.parseInt(args[1]);
+        int hauteur = Integer.parseInt(args[2]);
+        String adresse = args.length > 3 ? args[3] : "localhost";
+
+        try {
+            Disp disp = new Disp("Raytracer Distribué", largeur, hauteur);
+
+            // Connexion au service central
+            Registry reg = LocateRegistry.getRegistry(adresse, 1099);
+            ServiceInterface service = (ServiceInterface) reg.lookup("ServiceCentral");
+            System.out.println("Connecté au service central sur " + adresse);
+
+            ClientRaytracer client = new ClientRaytracer();
+
+            System.out.println("Lancement du calcul : " + nomFichier + " (" + largeur + "x" + hauteur + ")");
+            Instant debut = Instant.now();
+
+            Image imageResultat = client.distribuerCalcul(service, disp, nomFichier, largeur, hauteur);
 
             Instant fin = Instant.now();
             long duree = Duration.between(debut, fin).toMillis();
+            System.out.println("Image calculee en : " + duree + " ms");
 
-            System.out.println("Image calculée en : " + duree + " ms");
-
-            disp.setImage(imageFinale, 0, 0);
+            if (imageResultat != null) {
+                disp.setImage(imageResultat, 0, 0);
+            }
 
         } catch (NotBoundException e) {
-            System.out.println("Reference non trouvee dans l'annuaire");
+            System.out.println("Service central non trouvé dans l'annuaire.");
         } catch (RemoteException e) {
-            System.out.println("Reference non cree ou erreur de connexion : " + e.getMessage());
+            System.out.println("Erreur de connexion RMI : " + e.getMessage());
         } catch (Exception e) {
             System.out.println("Erreur : " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

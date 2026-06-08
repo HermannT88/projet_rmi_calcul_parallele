@@ -1,3 +1,5 @@
+package noeud_calcul;
+
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import raytracer.Image;

@@ -1,5 +1,11 @@
+package client;
+
 import java.io.Serializable;
 
+/**
+ * Représente un bloc de l'image à calculer.
+ * Contient les coordonnées et dimensions du bloc dans l'image totale.
+ */
 public class Task implements Serializable {
     public int id;
     public String nomFichier;
