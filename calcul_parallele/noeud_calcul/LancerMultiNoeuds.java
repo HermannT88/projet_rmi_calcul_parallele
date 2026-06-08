@@ -10,7 +10,7 @@ public class LancerMultiNoeuds {
             }
         }
 
-        System.out.println("Lancement de " + nbNoeuds + " noeuds de calcul...");
+        System.out.println("Lancement de " + nbNoeuds + " noeuds de calcul");
 
         for (int i = 1; i <= nbNoeuds; i++) {
             final String nomNoeud = "Noeud-" + i;
