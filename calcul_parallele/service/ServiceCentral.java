@@ -1,44 +1,37 @@
 package service;
+
 import java.rmi.RemoteException;
-import java.awt.Color;
 import java.rmi.server.RemoteServer;
 import java.rmi.server.ServerNotActiveException;
 import java.util.ArrayList;
-
-import ComputeNodeImpl;
-import raytracer.Image;
-import client.ClientRaytracer;
-
+import java.util.List;
+import noeud_calcul.ComputeNode;
 
 public class ServiceCentral implements ServiceInterface {
 
-    private ArrayList<ComputeNodeImpl> listeNoeuds = new ArrayList<>();
-    private ArrayList<ClientRaytracer> listeClients = new ArrayList<>();
+    private final List<ComputeNode> listeNoeuds = new ArrayList<>();
 
     public ServiceCentral() {
-        this.listeNoeuds = new ArrayList<>();
-        this.listeClients = new ArrayList<>();
-    }
-    
-    @Override
-    public void enregistrerNoeud(ComputeNodeImpl noeud) throws RemoteException {
-        this.listeNoeuds.add(noeud);
     }
 
     @Override
-    public void supprimerNoeud(ComputeNodeImpl noeud) throws RemoteException {
-        this.listeNoeuds.remove(noeud);
+    public synchronized void enregistrerNoeud(ComputeNode noeud) throws RemoteException {
+        try {
+            System.out.println("Nouveau nœud enregistré depuis : " + RemoteServer.getClientHost());
+        } catch (ServerNotActiveException e) {
+        }
+        listeNoeuds.add(noeud);
+        System.out.println("Nombre de nœuds disponibles : " + listeNoeuds.size());
     }
 
     @Override
-    public void enregistrerClient(ClientRaytracer client) throws RemoteException {
-        this.listeClients.add(client);
+    public synchronized void supprimerNoeud(ComputeNode noeud) throws RemoteException {
+        listeNoeuds.remove(noeud);
+        System.out.println("Nœud retiré. Nœuds restants : " + listeNoeuds.size());
     }
 
     @Override
-    public ArrayList<ComputeNodeImpl> getListeNoeuds() {
-        return this.listeNoeuds;
+    public synchronized List<ComputeNode> getListeNoeuds() throws RemoteException {
+        return new ArrayList<>(listeNoeuds);
     }
-
-
 }

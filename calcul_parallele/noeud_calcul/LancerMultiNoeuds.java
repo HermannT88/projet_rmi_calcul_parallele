@@ -1,3 +1,5 @@
+package noeud_calcul;
+
 public class LancerMultiNoeuds {
     public static void main(String[] args) {
         int nbNoeuds = 4; // Nombre de noeuds à lancer en parallèle
