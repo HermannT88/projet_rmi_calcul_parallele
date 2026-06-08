@@ -3,6 +3,8 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 
+import service.ServiceInterface;
+
 public class LancerService {
   public static void main(String args[]) {
     try {

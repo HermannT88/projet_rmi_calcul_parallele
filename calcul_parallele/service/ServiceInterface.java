@@ -1,6 +1,9 @@
+package service;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
+
+import ClientRaytracer;
 import raytracer.Image;
 import noeud_calcul.ComputeNodeImpl;
 

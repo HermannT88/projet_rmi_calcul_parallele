@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.time.Duration;
 import raytracer.Image;
 import raytracer.Scene;
+import service.ServiceInterface;
 
 public class ComputeNodeImpl implements ComputeNode {
 
