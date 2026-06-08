@@ -166,6 +166,22 @@ public class Appel {
 
 \section{Questions du projet}
 
+\subsection{Shématiser le problème :}
+
+En utilisant votre meilleur outil, votre imagination, décrivez et illustrez comment cela pourrait être réalisé, sans rentrer dans les détails JAVA, que vous n'allez pas tarder à mettre en œuvre. 
+
+
+\vspace{0.5cm}
+\begin{figure}[h]
+  \noindent
+  \begin{center}
+  \includegraphics[width=\textwidth]{images/shemafinal.png}
+  \end{center}
+  \caption{\underline{Schéma final de l'architecture RMI}}
+\end{figure}
+\vspace{0.5cm}
+\newpage
+
 \subsection{Que fait le client lors d'un appel à un service ?}
 
 \textbf{Tester le programme en modifiant ses paramètres (sur la ligne de commande).
@@ -249,11 +265,9 @@ Le processus fixe est le service qui va transmettre le calcul aux différents no
 
 \textbf{Les types des données échangées entre les processus}
 
-A REFAIRE 
+Le client appel les noeuds inscrits dans le service central. Il envoie le fichier ".txt" et les coordonnées relatives à la création de l'image (deux pour le point intial et  deux pour la longueur et la largeur des pixels). Il reçoit un objet "Image" une fois celle-ci construite.
 
-Le client envoie un fichier .txt et les coordonnées relatives à la création de l'image (deux pour le point intial et  deux pour la longueur et la largeur des pixels). Il reçoit un objet "Image" une fois celle-ci construite.
-
-Une fois ces calculs réalisés, les noeuds retourne le résultat et le service central va l'interpréter.
+Une fois ces calculs réalisés, les noeuds retourne le résultat au client.
 
 
 
