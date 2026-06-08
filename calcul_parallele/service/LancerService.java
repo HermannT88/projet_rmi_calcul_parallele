@@ -1,12 +1,9 @@
-package client;
+package service;
 
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-
-import service.ServiceCentral;
-import service.ServiceInterface;
 
 public class LancerService {
   public static void main(String args[]) {
