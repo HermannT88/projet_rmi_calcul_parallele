@@ -203,32 +203,40 @@ disp.setImage(image2, l/2, h/2);
 
 \subsection{Schéma de l'architecture}
 
+Pour notre première idée d'architecture, l'application avait un client qui envoyait le fichier txt correspondant à l'image à calculer au service central. Ce service se serait ensuite chargé du découpage en threads et de la répartition entre les nœuds de calcul. Une fois l'image calculée entièrement, le service central aurait renvoyé l'objet Image au Client.
+
 \begin{figure}[H]
   \noindent
   \begin{center}
   \includegraphics[width=12cm]{images/shema1.png}
   \end{center}
-  \caption{\underline{Image à reproduire}}
+  \caption{\underline{Première version}}
 \end{figure}
 \vspace{0.5cm}
+
+Pour la deuxième version, le fonctionnement était très similaire à la première version, avec cette fois toute la partie découpage des tâches et échanges avec les nœuds déléguée à un service Répartiteur.
 
 \begin{figure}[H]
   \noindent
   \begin{center}
   \includegraphics[width=12cm]{images/shema2.png}
   \end{center}
-  \caption{\underline{Image à reproduire}}
+  \caption{\underline{Deuxième version}}
 \end{figure}
 \vspace{0.5cm}
+
+Dans la version finale, toute la logique de découpage en threads a été redonnée au Client. Le service central ne sert plus qu'à fournir et gérer les nœuds, c'est-à-dire maintenir une liste de nœuds, en ajouter, en supprimer et envoyer un nœud lorsqu'un Client le demande.
 
 \begin{figure}[H]
   \noindent
   \begin{center}
   \includegraphics[width=12cm]{images/shema3.png}
   \end{center}
-  \caption{\underline{Image à reproduire}}
+  \caption{\underline{Version finale}}
 \end{figure}
 \vspace{0.5cm}
+
+* Contrairement à ce qui est indiqué sur le schéma, le service central renvoie un unique nœud au client et non la liste entière.
 
 \subsection{Processus fixes et processus mobiles}
 
