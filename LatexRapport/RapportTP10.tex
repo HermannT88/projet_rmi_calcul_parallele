@@ -240,15 +240,28 @@ Dans la version finale, toute la logique de découpage en threads a été redonn
 
 \subsection{Processus fixes et processus mobiles}
 
-Les processus mobiles sont représentés par les différents nœuds de calculs qui peuvent s'enregistrer et se déconnecter. On peut également considérer le client qui est à l'origine de la demande de calcul comme un processus mobile.
+Dans notre architecture, nous pouvons distinguer deux types de processus en fonction de leur rôle et de leur cycle de vie sur le réseau :
 
-Le processus fixe est le service qui va transmettre le calcul aux différents noeuds de calculs. Le service est enregistré sur un port.
+Le processus fixe :
+Le processus fixe est le Service Central. Il doit être lancé en premier et reste actif de manière permanente. Il écoute sur un port RMI défini (le port 1099 par défaut) et attend que d'autres processus s'y connectent pour tenir à jour son annuaire de nœuds de calcul.
+
+Les processus mobiles :
+Les processus mobiles apparaissent et disparaissent dynamiquement au cours du temps :
+\begin{itemize}
+    \item Les nœuds de calcul (workers) : Ils démarrent, s'enregistrent auprès du service central, et exposent leurs méthodes de calcul sur des ports dynamiques. Ils peuvent se déconnecter ou tomber en panne à tout moment.
+    \item Le client (dispatcher) : Il se connecte de manière éphémère lorsqu'il a une image à calculer. Il interroge le service pour obtenir les nœuds, effectue sa distribution de tâches en parallèle, puis se termine une fois l'image finale assemblée.
+\end{itemize}
 
 \subsection{Données échangées entre les processus}
 
-Le client envoie un fichier .txt et les coordonnées relatives à la création de l'image (deux pour le point initial et deux pour la longueur et la largeur des pixels). Il reçoit un objet "Image" une fois celle-ci construite.
+Il est important de noter que le service central ne fait pas transiter les calculs d'images. Le client dialogue directement avec les nœuds. Voici les véritables échanges de données s'opérant dans le système :
 
-Une fois ces calculs réalisés, les noeuds retournent le résultat et le service central va l'interpréter.
+\begin{itemize}
+    \item Entre les nœuds et le Service Central : Les nœuds s'enregistrent en envoyant au service leur propre référence RMI (un stub) de type \texttt{ComputeNode}.
+    \item Entre le Client et le Service Central : Le client demande à récupérer des nœuds de calcul. Le service lui retourne en réponse la référence distante (stub) d'un nœud disponible en appliquant une politique de round-robin.
+    \item Entre le Client et les nœuds de calcul : C'est ici que se fait la transmission du travail lourd. Le client envoie directement aux nœuds le nom du fichier de description (ex: \texttt{simple.txt}), les coordonnées de départ du bloc à traiter ($x, y$), ses dimensions ($w, h$), ainsi que la taille totale de l'image.
+    \item Entre les nœuds de calcul et le Client : Une fois le calcul d'un bloc terminé, le nœud retourne directement au client un objet sérialisable de type \texttt{Image} contenant les pixels calculés. Le client se charge ensuite de les assembler pour former le résultat final.
+\end{itemize}
 
 \newpage
 
