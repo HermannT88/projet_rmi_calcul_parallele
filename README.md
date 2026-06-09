@@ -41,7 +41,7 @@ javac -cp calcul_parallele calcul_parallele/client/*.java calcul_parallele/noeud
 ### 2. Lancer le Service Central
 
 ```powershell
-java -cp calcul_parallele client.LancerService
+java -cp calcul_parallele service.LancerService
 ```
 
 ### 3. Lancer les Nœuds de Calcul
