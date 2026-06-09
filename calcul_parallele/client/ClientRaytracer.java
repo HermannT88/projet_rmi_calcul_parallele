@@ -101,7 +101,6 @@ public class ClientRaytracer {
 
         blocsRestants = fileTravail.size();
         System.out.println(blocsRestants + " blocs à calculer.");
-
         // Lancement d'un thread de travail par nœud
         List<Thread> threads = new ArrayList<>();
         for (ComputeNode noeud : noeuds) {
@@ -119,11 +118,18 @@ public class ClientRaytracer {
                         recevoirResultat(tache, bloc);
                         System.out.println("Bloc " + tache.id + " integre.");
                     } catch (RemoteException e) {
-                        System.err.println("Erreur sur bloc " + tache.id + " : " + e.getMessage());
-                        // Remettre le bloc dans la file pour un autre nœud
+                        System.err.println("Nœud mort sur bloc " + tache.id + " : " + e.getMessage());
+                        // Remettre le bloc dans la file pour qu'un autre nœud le traite
                         synchronized (this) {
                             fileTravail.add(tache);
                         }
+                        // Retirer le nœud mort du service central
+                        try {
+                            service.supprimerNoeud(noeud);
+                        } catch (Exception e1) {
+                        }
+                        // Arrêter ce thread
+                        break;
                     }
                 }
             });
@@ -131,19 +137,16 @@ public class ClientRaytracer {
             t.start();
         }
 
-        // Attente de la fin de tous les calculs
-        synchronized (this) {
-            while (blocsRestants > 0) {
-                wait();
-            }
-        }
-
-        // Attente propre de la fin des threads
+        // Attente propre de la fin des threads (incluant les threads des nœuds morts)
         for (Thread t : threads) {
             try {
                 t.join();
             } catch (InterruptedException e) {
             }
+        }
+
+        if (blocsRestants > 0) {
+            System.err.println("ATTENTION : Tous les nœuds sont morts. " + blocsRestants + " bloc(s) non calculé(s).");
         }
 
         System.out.println("Calcul distribué terminé !");

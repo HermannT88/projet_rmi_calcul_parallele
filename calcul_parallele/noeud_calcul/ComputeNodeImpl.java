@@ -49,16 +49,19 @@ public class ComputeNodeImpl implements ComputeNode {
             // Enregistrement du noeud dans la liste du service central
             serviceCentral.enregistrerNoeud(stub);
             System.out.println(nomNoeud + " : Enregistré auprès du service central.");
-
-            // Le thread reste actif pour continuer à répondre aux appels RMI
-            synchronized (node) {
-                node.wait();
+            try {
+                // Le thread reste actif pour continuer à répondre aux appels RMI
+                synchronized (node) {
+                    node.wait();
+                }
+            } catch (InterruptedException e) {
+                System.out.println(nomNoeud + " : Arrêt du nœud.");
+                serviceCentral.supprimerNoeud(node);
             }
-        } catch (InterruptedException e) {
-            System.out.println(nomNoeud + " : Arrêt du nœud.");
         } catch (Exception e) {
             System.err.println(nomNoeud + " : Erreur d'initialisation : " + e.toString());
             e.printStackTrace();
         }
+
     }
 }
