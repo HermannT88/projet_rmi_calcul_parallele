@@ -7,7 +7,9 @@ import java.rmi.NotBoundException;
 import java.time.Instant;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import raytracer.Disp;
 import raytracer.Image;
@@ -18,16 +20,14 @@ import noeud_calcul.ComputeNode;
  * Client du système de calcul parallèle distribué.
  *
  * Fonctionnement :
- * 1. Demande au service le nombre de nœuds pour dimensionner les threads.
- * 2. Découpe l'image en blocs (grille 10x10).
- * 3. Lance autant de threads que de nœuds disponibles.
- * 4. Chaque thread demande UN nœud au service via obtenirNoeud(), puis
- *    appelle calculerBloc() directement sur ce nœud (parallélisme préservé).
- * 5. Si le nœud est mort (RemoteException sur calculerBloc) :
- *    - Le client prévient le service (supprimerNoeud)
- *    - Le bloc est remis dans la file
- *    - Le thread s'arrête (un thread = un nœud)
- * 6. Assemble les résultats et affiche l'image finale.
+ * 1. Demande au service le nombre de nœuds initiaux, lance un thread par nœud.
+ * 2. Chaque thread demande UN nœud au service via obtenirNoeud(), puis appelle
+ *    calculerBloc() directement (vrai parallélisme).
+ * 3. Un thread "watcher" surveille l'arrivée de nouveaux nœuds en cours de
+ *    calcul : si un nouveau nœud s'enregistre, un nouveau worker est lancé
+ *    automatiquement pour l'utiliser.
+ * 4. Si un nœud meurt : supprimerNoeud() est appelé, le bloc est remis en file,
+ *    le thread s'arrête. Le watcher ajustera le compte au prochain poll.
  */
 public class ClientRaytracer {
 
@@ -45,6 +45,10 @@ public class ClientRaytracer {
         fileTravail.add(0, t);
     }
 
+    private synchronized int getBlocsRestants() {
+        return blocsRestants;
+    }
+
     private synchronized void recevoirResultat(Task t, Image bloc) {
         for (int i = 0; i < t.w; i++) {
             for (int j = 0; j < t.h; j++) {
@@ -53,7 +57,7 @@ public class ClientRaytracer {
         }
         blocsRestants--;
         if (blocsRestants == 0) {
-            notifyAll();
+            notifyAll(); // Réveille le thread principal
         }
     }
 
@@ -61,12 +65,12 @@ public class ClientRaytracer {
             int largeurTotale, int hauteurTotale)
             throws RemoteException, InterruptedException {
 
-        int nbNoeuds = service.getNombreNoeuds();
-        if (nbNoeuds == 0) {
+        int nbInitial = service.getNombreNoeuds();
+        if (nbInitial == 0) {
             System.out.println("Aucun nœud disponible !");
             return null;
         }
-        System.out.println(nbNoeuds + " nœuds disponibles.");
+        System.out.println(nbInitial + " nœuds disponibles.");
 
         imageFinale = new Image(largeurTotale, hauteurTotale);
 
@@ -90,61 +94,102 @@ public class ClientRaytracer {
         blocsRestants = fileTravail.size();
         System.out.println(blocsRestants + " blocs à calculer.");
 
-        // 1 thread par nœud disponible au départ
-        List<Thread> threads = new ArrayList<>();
-        for (int i = 0; i < nbNoeuds; i++) {
-            Thread t = new Thread(() -> {
-                // Chaque thread demande son nœud au service
-                ComputeNode monNoeud;
-                try {
-                    monNoeud = service.obtenirNoeud();
-                } catch (RemoteException e) {
-                    System.err.println("Impossible d'obtenir un nœud : " + e.getMessage());
-                    return;
-                }
-                if (monNoeud == null) {
-                    System.err.println("Le service n'a plus de nœud à donner.");
-                    return;
-                }
+        // Liste thread-safe pour pouvoir y ajouter des workers dynamiquement
+        List<Thread> threads = Collections.synchronizedList(new ArrayList<>());
 
-                Task tache;
-                while ((tache = prendreProchainBloc()) != null) {
+        // Runnable partagé : chaque worker demande son nœud au service et traite des blocs
+        Runnable workerRunnable = () -> {
+            ComputeNode monNoeud;
+            try {
+                monNoeud = service.obtenirNoeud();
+            } catch (RemoteException e) {
+                System.err.println("Impossible d'obtenir un nœud : " + e.getMessage());
+                return;
+            }
+            if (monNoeud == null) {
+                System.err.println("Aucun nœud disponible dans le service.");
+                return;
+            }
+
+            Task tache;
+            while ((tache = prendreProchainBloc()) != null) {
+                try {
+                    System.out.println("Envoi bloc " + tache.id + " au noeud...");
+                    // Appel direct sur le nœud → vrai parallélisme
+                    Image bloc = monNoeud.calculerBloc(
+                            tache.nomFichier,
+                            tache.x, tache.y, tache.w, tache.h,
+                            tache.largeurTotale, tache.hauteurTotale);
+                    disp.setImage(bloc, tache.x, tache.y);
+                    recevoirResultat(tache, bloc);
+                    System.out.println("Bloc " + tache.id + " integre.");
+                } catch (RemoteException e) {
+                    System.err.println("Nœud mort sur bloc " + tache.id + ", retrait du service.");
                     try {
-                        System.out.println("Envoi bloc " + tache.id + " au noeud...");
-                        // Appel direct sur le nœud → vrai parallélisme
-                        Image bloc = monNoeud.calculerBloc(
-                                tache.nomFichier,
-                                tache.x, tache.y, tache.w, tache.h,
-                                tache.largeurTotale, tache.hauteurTotale);
-                        disp.setImage(bloc, tache.x, tache.y);
-                        recevoirResultat(tache, bloc);
-                        System.out.println("Bloc " + tache.id + " integre.");
-                    } catch (RemoteException e) {
-                        // Le nœud est mort : on le signale au service et on remet le bloc
-                        System.err.println("Nœud mort sur bloc " + tache.id + ", retrait du service.");
-                        try {
-                            service.supprimerNoeud(monNoeud);
-                        } catch (RemoteException ignored) {
-                        }
-                        remettreBloc(tache);
-                        // Ce thread s'arrête : son nœud est mort
-                        return;
+                        service.supprimerNoeud(monNoeud);
+                    } catch (RemoteException ignored) {
                     }
+                    remettreBloc(tache);
+                    return; // Ce thread s'arrête, son nœud est mort
                 }
-            });
+            }
+        };
+
+        // Lancement des workers initiaux
+        for (int i = 0; i < nbInitial; i++) {
+            Thread t = new Thread(workerRunnable);
             threads.add(t);
             t.start();
         }
 
-        for (Thread t : threads) {
+        // Dernier nombre de nœuds observé (pour détecter les nouveaux arrivants)
+        AtomicInteger nbNoeudsConnus = new AtomicInteger(nbInitial);
+
+        // Thread surveillant l'arrivée de nouveaux nœuds pendant le calcul
+        Thread watcher = new Thread(() -> {
+            while (getBlocsRestants() > 0) {
+                try {
+                    Thread.sleep(300);
+                } catch (InterruptedException e) {
+                    return;
+                }
+                try {
+                    int actuel = service.getNombreNoeuds();
+                    int connus = nbNoeudsConnus.getAndSet(actuel);
+                    int nouveaux = actuel - connus;
+                    // Si le nombre de nœuds a augmenté, on lance un worker pour chaque nouveau
+                    for (int i = 0; i < nouveaux; i++) {
+                        System.out.println("Nouveau nœud détecté ! Lancement d'un worker supplémentaire.");
+                        Thread t = new Thread(workerRunnable);
+                        threads.add(t);
+                        t.start();
+                    }
+                } catch (RemoteException e) {
+                    return;
+                }
+            }
+        });
+        watcher.setDaemon(true);
+        watcher.start();
+
+        // Attente de la fin du calcul
+        synchronized (this) {
+            while (blocsRestants > 0) {
+                wait(500);
+            }
+        }
+        watcher.interrupt();
+
+        // Attente de tous les workers (initiaux + dynamiques)
+        for (Thread t : new ArrayList<>(threads)) {
             try {
-                t.join();
+                t.join(2000);
             } catch (InterruptedException e) {
             }
         }
 
         if (blocsRestants > 0) {
-            System.err.println("ATTENTION : " + blocsRestants + " bloc(s) non calculé(s) (tous les nœuds sont morts).");
+            System.err.println("ATTENTION : " + blocsRestants + " bloc(s) non calculé(s).");
         }
 
         System.out.println("Calcul distribué terminé !");
