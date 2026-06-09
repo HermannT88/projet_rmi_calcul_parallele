@@ -63,7 +63,9 @@
 \section{Introduction}
 % ===================================================
 
-% TODO
+\textit{Lien du répertoire GIT :} \texttt{https://github.com/HermannT88/projet\_rmi\_calcul\_parallele}
+
+Pour 
 
 \newpage
 
@@ -135,6 +137,19 @@ Nous obtenons alors ces résultats :
 Nous constatons que le temps de calcul augmente proportionnelement au nombre de pixels de l'image.
 
 \subsection{Reproduction de l'image}
+
+L'objectif est de reproduire l'image ci-dessous :
+
+\begin{figure}[H]
+  \noindent
+  \begin{center}
+  \includegraphics[width=7cm]{images/raytrace-resultat-2.png}
+  \end{center}
+  \caption{\underline{Image à reproduire}}
+\end{figure}
+\vspace{0.5cm}
+
+
 
 Pour reproduire l'image, nous allons calculer individuellement les deux parties de l'image attendue.
 
@@ -228,7 +243,7 @@ Une fois ces calculs réalisés, les noeuds retournent le résultat et le servic
 
 \subsection{Distribution des tâches en threads}
 
-Il faut séparer chaque envoi aux noeuds dans des nouveaux Thread.
+
 
 \subsection{Synchronisation et assemblage des résultats}
 
