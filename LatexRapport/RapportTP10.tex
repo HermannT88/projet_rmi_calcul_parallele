@@ -225,15 +225,35 @@ Une fois ces calculs réalisés, les noeuds retournent le résultat et le servic
 
 \subsection{Le service central}
 
-% TODO
+Le service central agit comme un annuaire dynamique pour les ressources de calcul. Il implémente l'interface \texttt{ServiceInterface} et possède les rôles suivants :
+\begin{itemize}
+    \item \textbf{Registre des nœuds} : Il maintient une liste interne des nœuds de calcul actuellement connectés.
+    \item \textbf{Gestion des connexions/déconnexions} : Il expose des méthodes \texttt{enregistrerNoeud} et \texttt{supprimerNoeud} pour mettre à jour cette liste.
+    \item \textbf{Répartition de charge (Round-Robin)} : La méthode \texttt{obtenirNoeud()} distribue les nœuds disponibles de manière cyclique. Cela garantit qu'un client ne monopolise pas un seul nœud si plusieurs sont disponibles.
+\end{itemize}
+Il est important de noter que le service central ne gère pas directement les calculs ni les données des images ; il ne fait que mettre en relation les clients et les travailleurs.
 
 \subsection{Les nœuds de calcul}
 
-% TODO
+Les nœuds de calcul sont les travailleurs (\textit{workers}) de l'architecture. Chaque nœud est un programme autonome qui :
+\begin{itemize}
+    \item Instancie un objet implémentant l'interface \texttt{ComputeNode}.
+    \item S'enregistre auprès du service central via RMI au démarrage.
+    \item Expose une méthode distante \texttt{calculerBloc(...)} qui prend en paramètre le fichier de la scène, la position ($x, y$) du bloc à calculer, et ses dimensions ($w, h$).
+    \item Instancie un moteur de \textit{raytracing} en mémoire, calcule les pixels correspondants à son bloc, et renvoie un objet \texttt{Image} (sérialisable) contenant le résultat.
+\end{itemize}
 
 \subsection{Le client / dispatcher}
 
-% TODO
+Le client est le programme qui souhaite rendre une image. Il joue un rôle actif de \textit{dispatcher} :
+\begin{enumerate}
+    \item Il se connecte au service central pour connaître les nœuds disponibles.
+    \item Il divise l'image complète en plusieurs sous-parties indépendantes appelées "blocs" ou "tâches" (par exemple, un quadrillage 10x10).
+    \item Il place toutes ces tâches dans une file de travail (une liste partagée).
+    \item Il lance un thread "worker" local pour chaque nœud disponible.
+    \item Un thread secondaire nommé "watcher" surveille périodiquement le service central pour détecter l'apparition de nouveaux nœuds et lancer des threads supplémentaires si nécessaire.
+    \item Si un worker vient à mourir ou à se déconnecter, il tue son thread et renvoie le bloc en cours dans la file de travail.
+\end{enumerate}
 
 \newpage
 
@@ -243,11 +263,23 @@ Une fois ces calculs réalisés, les noeuds retournent le résultat et le servic
 
 \subsection{Distribution des tâches en threads}
 
+Pour exploiter les nœuds distants, le client génère un parallélisme local via des \texttt{Thread} Java. 
+La liste des tâches (\texttt{fileTravail}) est gérée de manière synchronisée. Chaque thread local effectue la boucle suivante :
+\begin{itemize}
+    \item Il demande un nœud de calcul au service.
+    \item Tant qu'il reste des blocs, il extrait un bloc via une méthode \texttt{prendreProchainBloc()}.
+    \item Il effectue l'appel RMI synchrone \texttt{calculerBloc} sur son nœud attribué.
+\end{itemize}
 
+L'architecture gère également la tolérance aux pannes : si l'appel RMI échoue (par exemple si un nœud se déconnecte subitement), l'exception \texttt{RemoteException} est interceptée. Le client informe alors le service central de supprimer ce nœud, et le bloc inachevé est replacé dans la file via \texttt{remettreBloc(tache)}.
 
 \subsection{Synchronisation et assemblage des résultats}
 
-% TODO
+L'assemblage des sous-images (\texttt{Image} reçues des nœuds) dans l'image finale est géré par la méthode \texttt{recevoirResultat}. Cette méthode copie les pixels du bloc reçu vers l'image complète. 
+
+Chaque noeuds appel cette méthode à chaque fois qu'ils terminent un bloc et donc l'ajout à l'image finale et actualise l'image en direct.
+
+Pour éviter les problèmes d'accès concurrents lors de la modification de l'image globale et du compteur de blocs restants, le client utilise le mot-clé \texttt{synchronized}. De plus, le compteur \texttt{blocsRestants} est décrémenté à chaque résultat reçu. Lorsqu'il atteint 0, la méthode déclenche un \texttt{notifyAll()} pour réveiller le thread principal qui était en attente (bloqué par un \texttt{wait()}), signifiant ainsi la fin du calcul distribué. L'image est également actualisée en temps réel à l'écran via l'interface graphique \texttt{Disp}.
 
 \newpage
 
@@ -255,6 +287,11 @@ Une fois ces calculs réalisés, les noeuds retournent le résultat et le servic
 \section{Conclusion}
 % ===================================================
 
-% TODO
+La mise en place de RMI nous a permis de distribuer les lourds calculs de \textit{raytracing} sur un réseau d'ordinateurs. L'approche choisie se démarque par sa robustesse et sa flexibilité :
+\begin{itemize}
+    \item \textbf{Scalabilité horizontale} : L'ajout de nouveaux nœuds pendant le calcul est détecté automatiquement, ce qui accélère la résolution de l'image en temps réel.
+    \item \textbf{Tolérance aux pannes} : Un ordinateur défaillant n'interrompt pas le rendu. Le bloc perdu est simplement réaffecté à un autre nœud.
+\end{itemize}
+En divisant judicieusement le travail en petites tâches et en évitant les verrous bloquants prolongés, le temps de calcul est drastiquement réduit, offrant des performances bien supérieures à un calcul purement local.
 
 \end{document}
