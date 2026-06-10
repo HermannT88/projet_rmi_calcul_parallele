@@ -231,17 +231,19 @@ Le service central agit comme un annuaire dynamique pour les ressources de calcu
     \item \textbf{Gestion des connexions/déconnexions} : Il expose des méthodes \texttt{enregistrerNoeud} et \texttt{supprimerNoeud} pour mettre à jour cette liste.
     \item \textbf{Répartition de charge (Round-Robin)} : La méthode \texttt{obtenirNoeud()} distribue les nœuds disponibles de manière cyclique. Cela garantit qu'un client ne monopolise pas un seul nœud si plusieurs sont disponibles.
 \end{itemize}
-Il est important de noter que le service central ne gère pas directement les calculs ni les données des images ; il ne fait que mettre en relation les clients et les travailleurs.
+L'index du noeud distribuer est gérée de manière à boucler sur la liste des noeuds et à prendre en compte les nouveaux noeuds et les noeuds mort.
 
 \subsection{Les nœuds de calcul}
 
-Les nœuds de calcul sont les travailleurs (\textit{workers}) de l'architecture. Chaque nœud est un programme autonome qui :
+Les nœuds de calcul sont les travailleurs de l'architecture. Chaque nœud est un programme autonome qui :
 \begin{itemize}
     \item Instancie un objet implémentant l'interface \texttt{ComputeNode}.
     \item S'enregistre auprès du service central via RMI au démarrage.
     \item Expose une méthode distante \texttt{calculerBloc(...)} qui prend en paramètre le fichier de la scène, la position ($x, y$) du bloc à calculer, et ses dimensions ($w, h$).
     \item Instancie un moteur de \textit{raytracing} en mémoire, calcule les pixels correspondants à son bloc, et renvoie un objet \texttt{Image} (sérialisable) contenant le résultat.
 \end{itemize}
+
+Il y a aussi une classe LancerMultiNoeuds qui permet de créer puis lancer N noeuds dans des threads.
 
 \subsection{Le client / dispatcher}
 
